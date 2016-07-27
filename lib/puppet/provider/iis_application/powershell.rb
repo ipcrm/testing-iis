@@ -26,7 +26,7 @@ Puppet::Type.type(:iis_application).provide(:powershell, parent: Puppet::Provide
         app_hash[:name] = app['path'].gsub(%r{^\/}, '')
         app_hash[:path] = app['PhysicalPath']
         app_hash[:app_pool] = app['applicationPool']
-        app_hash[:site] = app['ItemXPath'].match(/@name='([a-z0-9_\ ]+)'/i)[1]
+        app_hash[:site] = app['ItemXPath'].match(/@name=('\S+')/i)[1].tr("'","")
         app_hash[:ensure] = :present
         app_instances << new(app_hash)
       end
@@ -59,7 +59,7 @@ Puppet::Type.type(:iis_application).provide(:powershell, parent: Puppet::Provide
       '-Force'
     ]
     resp = Puppet::Type::Iis_application::ProviderPowershell.run(inst_cmd.join(' '))
-    raise(resp) unless resp.empty?
+    raise(resp) if resp.match(/Error/i)
 
     @resource.original_parameters.each_key do |k|
       @property_hash[k] = @resource[k]
@@ -77,7 +77,7 @@ Puppet::Type.type(:iis_application).provide(:powershell, parent: Puppet::Provide
       '-Force -Recurse'
     ]
     resp = Puppet::Type::Iis_application::ProviderPowershell.run(inst_cmd.join(' '))
-    raise(resp) unless resp.empty?
+    raise(resp) if resp.match(/Error/i)
 
     @property_hash.clear
     exists? ? (return false) : (return true)
@@ -104,6 +104,6 @@ Puppet::Type.type(:iis_application).provide(:powershell, parent: Puppet::Provide
       command_array << "Set-ItemProperty \"IIS:\\\\Sites\\#{@property_hash[:site]}\\#{@property_hash[:name]}\" #{appattr} #{value}"
     end
     resp = Puppet::Type::Iis_application::ProviderPowershell.run(command_array.join('; '))
-    raise(resp) unless resp.empty?
+    raise(resp) if resp.match(/Error/i)
   end
 end
